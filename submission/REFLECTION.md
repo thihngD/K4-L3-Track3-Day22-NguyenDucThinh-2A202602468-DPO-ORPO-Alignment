@@ -164,13 +164,28 @@ _Trả lời ở đây._
 
 | Loss | Độ chính xác held-out | Margin held-out | Độ dài trung bình | Nhận xét |
 |---|---:|---:|---:|---|
-| DPO | | | | |
-| RPO | | | | |
-| DPO-norm | | | | |
-| LD-DPO | | | | |
-| ORPO | | | | |
+| DPO | 0.70 | +0.023 (0.091 − 0.068) | 436.3 ký tự | INTENDED, margin nhỏ nhất trong nhóm có reference |
+| RPO | 0.66 | +0.035 (0.553 − 0.518) | 436.0 ký tự | INTENDED, cả chosen và rejected tăng mạnh hơn DPO nhưng độ dài gần như không đổi |
+| DPO-norm | 0.60 | −0.007 (−0.180 − (−0.187)) | 443.2 ký tự | LIKELIHOOD DISPLACEMENT — cả hai reward âm |
+| LD-DPO | 0.55 | +0.022 (−0.130 − (−0.152)) | 459.7 ký tự | LIKELIHOOD DISPLACEMENT, độ chính xác thấp nhất trong nhóm |
+| ORPO | 0.66 | log-odds-ratio = −0.624 (không có reference nên không so margin trực tiếp) | 460.8 ký tự | dài nhất trong 5 biến thể |
+
+(Huấn luyện trên 300 cặp đầu của NB2, không eval định kỳ trong lúc huấn luyện — mẫu nhỏ hơn NB3 nên các số trên nhiễu
+hơn con số chính của NB3.)
 
 _Biến thể nào thay đổi độ dài nhiều nhất, và vì sao (dựa vào công thức loss)?_
+
+**ORPO dài nhất (460.8 ký tự, +24.5 so với DPO = +5.6%)**, theo sát là **LD-DPO (459.7, +23.5)**. Hai biến thể còn
+reference (DPO, RPO) ngắn hơn rõ rệt và gần bằng nhau (436.3 / 436.0). Giải thích từ công thức: ORPO không có mô hình
+tham chiếu — nó chỉ tối ưu NLL(chosen) + log-odds-ratio trên **log-prob trung bình theo token** (đã chuẩn hoá độ dài),
+nên không có cơ chế nào "phạt" câu dài như DPO gốc (DPO cộng dồn log-prob trên toàn câu, câu dài vốn có tổng log-prob
+âm hơn, nhưng với 300 mẫu và 100 bước thì độ dài trung bình của DPO lại là *thấp nhất* — cho thấy ở quy mô nhỏ này độ
+lệch độ dài chưa bộc lộ rõ như lý thuyết). RPO giữ độ dài gần như y hệt DPO vì phần loss thêm vào chỉ là NLL(chosen),
+không trực tiếp khuyến khích câu dài hơn, nó chỉ chống lại việc log-prob của chosen bị tụt — và đúng là RPO có reward
+margin tuyệt đối lớn hơn DPO nhiều (0.553 so với 0.091) mà độ dài không đổi, khớp với mục đích thiết kế của RPO. Bất
+ngờ nhất là **LD-DPO dài thứ nhì dù mục đích của nó là giảm thiên vị độ dài** (hạ trọng số phần token vượt quá độ dài
+chung) — có thể vì mẫu 300 cặp quá nhỏ để thấy đúng hiệu ứng, hoặc `ld_alpha=0.5` chưa đủ mạnh; cần chạy lại trên tập
+lớn hơn (như NB3 với 800 cặp) để kết luận chắc hơn.
 
 ---
 
@@ -187,7 +202,7 @@ _Thành phần reward nào tăng trước (đúng định dạng hay đúng đá
 
 ## Danh sách bonus
 
-- [ ] NB3b — biến thể loss (+8)
+- [x] NB3b — biến thể loss (+8)
 - [ ] NB5 — GGUF SFT+DPO (+4)
 - [ ] NB6 — benchmark (+6)
 - [ ] NB7 — GRPO (+8)
