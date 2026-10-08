@@ -59,22 +59,31 @@ def generate(
     tokenizer,
     prompts: list[str],
     max_new_tokens: int = C.GEN_MAX_NEW_TOKENS,
-    batch_size: int = 8,
+    batch_size: int | None = None,
 ) -> list[str]:
-    """Greedy, batched generation for single-turn user prompts."""
+    """Greedy, batched generation for single-turn user prompts.
+
+    Inference holds no gradients or optimizer state, so it tolerates a much
+    bigger batch than training does; `batch_size` defaults to the tier's
+    `gen_batch`. A CUDA OOM at any size halves that chunk and retries instead
+    of losing the whole call (and the GPU time already spent on it).
+    """
     import torch
     from unsloth import FastLanguageModel
 
     FastLanguageModel.for_inference(model)
     old_side = tokenizer.padding_side
     tokenizer.padding_side = "left"
-    outputs: list[str] = []
-    try:
-        for start in range(0, len(prompts), batch_size):
-            batch = prompts[start : start + batch_size]
-            texts = [chat_text(tokenizer, [{"role": "user", "content": p}]) for p in batch]
-            # The template already contains the special tokens.
-            enc = tokenizer(texts, return_tensors="pt", padding=True, add_special_tokens=False).to(model.device)
+    batch_size = batch_size or C.TIER.gen_batch
+
+    def run(batch: list[str], bsz: int) -> list[str]:
+        if not batch:
+            return []
+        chunk, rest = batch[:bsz], batch[bsz:]
+        texts = [chat_text(tokenizer, [{"role": "user", "content": p}]) for p in chunk]
+        # The template already contains the special tokens.
+        enc = tokenizer(texts, return_tensors="pt", padding=True, add_special_tokens=False).to(model.device)
+        try:
             with torch.no_grad():
                 out = model.generate(
                     **enc,
@@ -82,11 +91,21 @@ def generate(
                     do_sample=False,
                     pad_token_id=tokenizer.pad_token_id,
                 )
-            new_tokens = out[:, enc["input_ids"].shape[1] :]
-            outputs.extend(t.strip() for t in tokenizer.batch_decode(new_tokens, skip_special_tokens=True))
+        except torch.cuda.OutOfMemoryError:
+            if bsz == 1:
+                raise
+            print(f"generate(): CUDA OOM at batch_size={bsz}, retrying this chunk at {bsz // 2}")
+            del enc
+            cleanup()
+            return run(chunk, bsz // 2) + run(rest, bsz)
+        new_tokens = out[:, enc["input_ids"].shape[1] :]
+        decoded = [t.strip() for t in tokenizer.batch_decode(new_tokens, skip_special_tokens=True)]
+        return decoded + run(rest, bsz)
+
+    try:
+        return run(prompts, batch_size)
     finally:
         tokenizer.padding_side = old_side
-    return outputs
 
 
 def cleanup() -> None:
@@ -118,7 +137,7 @@ def dpo_config(output_dir: str | Path, loss_type: list[str] | None = None, **ove
     params = dict(
         output_dir=str(output_dir),
         per_device_train_batch_size=C.TIER.dpo_batch,
-        per_device_eval_batch_size=C.TIER.dpo_batch,
+        per_device_eval_batch_size=C.TIER.dpo_eval_batch,
         gradient_accumulation_steps=C.TIER.dpo_grad_accum,
         num_train_epochs=C.DPO_EPOCHS,
         learning_rate=C.DPO_LR,

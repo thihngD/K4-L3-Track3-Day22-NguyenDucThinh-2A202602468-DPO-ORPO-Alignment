@@ -62,9 +62,11 @@ class TierConfig:
     pref_train: int
     pref_eval: int
     dpo_batch: int
+    dpo_eval_batch: int
     dpo_grad_accum: int
     variant_train: int
     judge_prompts: int
+    gen_batch: int
 
 
 # Qwen3-4B-Instruct-2507 is the non-thinking instruct release: clean ChatML
@@ -81,9 +83,11 @@ _TIERS = {
         pref_train=800,
         pref_eval=100,
         dpo_batch=1,
+        dpo_eval_batch=4,
         dpo_grad_accum=8,
         variant_train=300,
         judge_prompts=50,
+        gen_batch=16,
     ),
     "BIGGPU": TierConfig(
         name="BIGGPU",
@@ -95,9 +99,11 @@ _TIERS = {
         pref_train=3500,
         pref_eval=200,
         dpo_batch=2,
+        dpo_eval_batch=4,
         dpo_grad_accum=4,
         variant_train=1000,
         judge_prompts=100,
+        gen_batch=8,
     ),
 }
 

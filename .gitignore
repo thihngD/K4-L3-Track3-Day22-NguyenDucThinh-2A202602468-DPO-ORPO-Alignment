@@ -43,6 +43,7 @@ hf_cache/
 .env
 .env.local
 *.token
+kaggle.json
 
 # Editor / OS
 .DS_Store
