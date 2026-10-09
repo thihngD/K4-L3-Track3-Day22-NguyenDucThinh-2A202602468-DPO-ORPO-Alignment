@@ -106,6 +106,13 @@ hơn. Một quan sát ngoài rubric: cả hai mô hình đều rò rỉ token `<
 
 _Nếu không chạy: viết giả thuyết 3 câu về điều bạn dự đoán sẽ thấy._
 
+Không chạy `make beta-sweep` (giữ nguyên β=0.1 mặc định ở NB3, margin held-out +0.083, accuracy 0.660). Giả thuyết: với
+β=0.05 (yếu hơn, cho phép policy đi xa reference hơn), cả `rewards/chosen` và `rewards/rejected` sẽ dịch xa 0 hơn nhiều
+so với kết quả β=0.1 hiện tại, margin có thể tăng nhưng cũng dễ rơi vào LIKELIHOOD DISPLACEMENT hơn vì ít bị KL phạt lại
+gần reference. Với β=0.5 (mạnh hơn), dự đoán ngược lại: reward hai phía gần 0 hơn (policy gần reference hơn), margin
+nhỏ hơn và ổn định hơn, nhưng độ chính xác reward trên held-out có thể không đổi nhiều hoặc giảm nhẹ vì mô hình phân
+biệt chosen/rejected kém dứt khoát hơn.
+
 ---
 
 ## 6. Một quyết định quan trọng nhất (≥ 150 từ)
