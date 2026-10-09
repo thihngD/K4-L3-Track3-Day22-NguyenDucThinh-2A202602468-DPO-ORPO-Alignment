@@ -161,7 +161,14 @@ push kernel đầu tiên.
 
 _Δ nào vượt ~2× stderr? Có "thuế căn chỉnh" (alignment tax, tức điểm GSM8K bị giảm sau DPO) không? Kết quả bộ đo có cùng chiều với NB4 không?_
 
-_Trả lời ở đây._
+Không chạy NB6. Giả thuyết: **IFEval** (đo đúng định dạng) nhiều khả năng giữ nguyên hoặc nhích lên nhẹ, vì DPO huấn
+luyện trên dữ liệu dạng hội thoại thường không làm hỏng khả năng theo định dạng. **GSM8K** có thể giảm nhẹ — một dạng
+"thuế căn chỉnh" — vì 800 cặp sở thích dùng để DPO không hướng về toán, lr/β hiện tại chỉ chỉnh giọng văn/an toàn/hữu ích
+nên không có lý do cải thiện suy luận toán, và có rủi ro nhỏ làm câu trả lời dài dòng hơn (NB4 cho thấy DPO dài hơn SFT
+612 vs 559 ký tự) khiến mô hình dễ lạc hướng trước khi ra "Đáp số". **Global-MMLU-vi** (kiến thức tổng quát) dự đoán gần
+như không đổi, vì LoRA 100 bước với lr nhỏ khó dịch chuyển tri thức nền. Tổng thể, hầu hết Δ có thể nằm trong khoảng
+~2× stderr (không có ý nghĩa thống kê) — khớp với kết luận "chưa đủ bằng chứng DPO tốt hơn SFT" đã thấy ở NB4
+(CI 95% của win rate held-out chứa 0.5).
 
 ---
 
@@ -205,6 +212,12 @@ lớn hơn (như NB3 với 800 cặp) để kết luận chắc hơn.
 
 _Thành phần reward nào tăng trước (đúng định dạng hay đúng đáp án)? Chênh lệch có vượt nhiễu không?_
 
+Không chạy NB7. Giả thuyết: thành phần **đúng định dạng** (ví dụ in đúng dòng "Đáp số: X") thường tăng nhanh hơn và
+bão hoà sớm hơn thành phần **đúng đáp án**, vì khớp khuôn in dễ học hơn giải đúng bài toán — mẫu hình phổ biến trong
+GRPO/RLVR có phần thưởng kiểm chứng được. Độ chính xác trước/sau dự đoán có cải thiện thật nhưng không lớn trên ngân
+sách T4 (ít bước, G nhỏ), nên chênh lệch có thể chỉ nhích hơn sai số chuẩn √(p(1−p)/n) một chút, không chắc vượt hẳn mức
+nhiễu nếu n câu kiểm tra nhỏ.
+
 ---
 
 ## Danh sách bonus
@@ -223,3 +236,7 @@ _Thành phần reward nào tăng trước (đúng định dạng hay đúng đá
 ## Điều bất ngờ nhất
 
 _(Tuỳ chọn, 1–3 câu)_
+
+Bất ngờ nhất là `Skywork-Reward-V2-Qwen3-4B` — giám khảo mặc định, cùng họ Qwen với chính mô hình đang được đánh giá —
+lại trượt bộ sanity tiếng Việt chỉ 50% (dưới ngưỡng 80%) và tự động bị loại khỏi hội đồng, để một mình
+`Skywork-Reward-V2-Llama-3.2-3B` quyết định kết quả NB4. Cùng họ mô hình không đồng nghĩa đáng tin hơn trên tiếng Việt.
